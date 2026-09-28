@@ -121,3 +121,31 @@ This project uses the SMS Spam Collection dataset from the UCI Machine Learning 
 Almeida, T. A., Hidalgo, J. M. G., and Yamakami, A. (2011). Contributions to the Study of SMS Spam Filtering: New Collection and Results.
 
 The dataset is used for educational machine learning development.
+## Model Training
+
+The project includes a machine learning training pipeline built using scikit-learn.
+
+SMS messages are converted into numerical features using TF-IDF vectorisation.
+
+The cleaned dataset is split into training and validation sets using an 80/20 stratified split.
+
+Two classification models are trained and evaluated:
+
+- Logistic Regression
+- Multinomial Naive Bayes
+
+The models are evaluated using:
+
+- Accuracy
+- Precision
+- Recall
+- F1 Score
+- Confusion Matrix
+- Classification Report
+
+The model with the highest F1 score for spam detection is automatically selected and saved.
+
+Run the training pipeline with:
+
+```bash
+python train_model.py
