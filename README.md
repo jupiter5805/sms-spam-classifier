@@ -338,3 +338,47 @@ The application handles:
 - Model and language-model processing errors
 
 Errors are displayed clearly while diagnostic information is preserved in the local history log.
+
+## Automated Testing
+
+The project uses `pytest` for automated testing across the ingestion, classification, chatbot and RAG layers.
+
+Run the complete test suite with:
+
+```bash
+python -m pytest -v
+```
+
+The automated tests cover:
+
+- Dataset cleaning and standardisation
+- Duplicate and invalid record handling
+- Loading trained classifier models
+- SMS input validation
+- Classification and confidence output
+- Missing model handling
+- Text and CSV batch input
+- Unsupported input files
+- Chatbot processing logic
+- Chatbot output formatting
+- Knowledge document loading
+- RAG document chunking
+- Chunk overlap
+- Semantic retrieval of relevant knowledge
+
+Language models and embedding models are mocked where appropriate so unit tests remain deterministic and do not require large model downloads.
+
+### Continuous Integration
+
+GitHub Actions automatically runs the full test suite on:
+
+- Pushes to `main`
+- Pull requests targeting `main`
+
+The workflow is defined in:
+
+```text
+.github/workflows/tests.yml
+```
+
+This ensures changes are automatically verified before they are integrated into the project.
