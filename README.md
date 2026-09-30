@@ -149,3 +149,51 @@ Run the training pipeline with:
 
 ```bash
 python train_model.py
+
+## Basic Classifier Interface
+
+The trained model can be used through a simple command-line interface.
+
+The application separates the classification logic from the user interface.
+
+`SMSClassifier` is responsible for:
+
+- Loading the saved machine learning model
+- Validating SMS message input
+- Running predictions
+- Returning the predicted class
+- Returning prediction confidence where supported
+
+`simple_interface.py` provides the command-line interface.
+
+Run the interface with:
+
+```bash
+python simple_interface.py
+```
+
+The application will prompt for SMS messages repeatedly until `exit` or `quit` is entered.
+
+Example:
+
+```text
+SMS Spam Classifier
+-------------------
+Enter an SMS message to classify.
+Type 'exit' or 'quit' to close the program.
+
+Enter SMS message: Congratulations! You have won a free cash prize.
+
+[Result] SPAM (98.45% confidence)
+This message looks like spam.
+```
+
+The model location can be changed using the `MODEL_PATH` environment variable.
+
+For example:
+
+```bash
+MODEL_PATH=models/trained_model.pkl python simple_interface.py
+```
+
+The classifier uses the complete saved scikit-learn pipeline, meaning the same TF-IDF transformation used during training is automatically applied to new SMS messages.
