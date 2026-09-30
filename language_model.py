@@ -7,6 +7,22 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 logger = logging.getLogger(__name__)
 
 
+STYLE_PROMPTS = {
+    "friendly": (
+        "Respond in a friendly, helpful and reassuring tone."
+    ),
+    "formal": (
+        "Respond in a professional and formal tone."
+    ),
+    "concise": (
+        "Respond very briefly and directly. Use no more than two sentences."
+    ),
+    "enthusiastic": (
+        "Respond in an upbeat and enthusiastic tone while remaining useful."
+    ),
+}
+
+
 class TinyLlamaAssistant:
     def __init__(
         self,
@@ -95,12 +111,11 @@ class TinyLlamaAssistant:
             {
                 "role": "system",
                 "content": (
-                    "You extract an SMS message from a user's request. "
-                    "Return only the SMS message that should be checked "
-                    "for spam. Do not explain anything. Do not classify "
-                    "the message. Do not add quotation marks. If the "
-                    "entire user input is already an SMS message, return "
-                    "it unchanged."
+                    "Extract the SMS message that the user wants checked "
+                    "for spam. Return only the SMS text. Do not classify "
+                    "it. Do not explain your answer. Do not add quotation "
+                    "marks. If the entire input is already the SMS message, "
+                    "return it unchanged."
                 ),
             },
             {
@@ -119,16 +134,10 @@ class TinyLlamaAssistant:
 
         if not extracted:
             logger.warning(
-                "Language model returned empty extraction. "
-                "Using original input."
+                "Empty extraction returned. Using original input."
             )
 
             return user_input.strip()
-
-        logger.info(
-            "Extracted SMS message: %s",
-            extracted,
-        )
 
         return extracted
 
@@ -138,32 +147,41 @@ class TinyLlamaAssistant:
         extracted_sms,
         classification,
         confidence,
+        style="friendly",
     ):
-        confidence_percentage = confidence * 100
+        style_instruction = STYLE_PROMPTS.get(
+            style,
+            STYLE_PROMPTS["friendly"],
+        )
+
+        if confidence is not None:
+            confidence_text = f"{confidence * 100:.2f}%"
+        else:
+            confidence_text = "not available"
 
         messages = [
             {
                 "role": "system",
                 "content": (
-                    "You are a helpful SMS spam detection assistant. "
+                    "You are an SMS spam detection assistant. "
                     "A machine learning classifier has already analysed "
-                    "the SMS. Treat its classification as authoritative. "
-                    "Explain the result briefly and conversationally. "
-                    "Do not change or second-guess the classification. "
-                    "If the result is spam, advise the user to be "
-                    "cautious. If it is ham, explain that it appears "
-                    "legitimate, while avoiding absolute guarantees. "
-                    "Keep the answer concise."
+                    "the SMS. Treat its result as authoritative. "
+                    "Do not invent or change the confidence score. "
+                    "Mention the classifier result and confidence naturally. "
+                    "If the result is spam, advise caution with links, "
+                    "payments and personal information. If the result is "
+                    "ham, say it appears legitimate but do not guarantee "
+                    "that it is safe. "
+                    f"{style_instruction}"
                 ),
             },
             {
                 "role": "user",
                 "content": (
-                    f"Original user request: {original_input}\n"
+                    f"Original request: {original_input}\n"
                     f"Extracted SMS: {extracted_sms}\n"
-                    f"Classifier result: {classification}\n"
-                    f"Classifier confidence: "
-                    f"{confidence_percentage:.2f}%"
+                    f"Classification: {classification}\n"
+                    f"Confidence: {confidence_text}"
                 ),
             },
         ]
@@ -175,30 +193,34 @@ class TinyLlamaAssistant:
             temperature=0.7,
         )
 
-        if not response:
-            return self._fallback_response(
-                classification,
-                confidence_percentage,
-            )
+        if response:
+            return response
 
-        return response
+        return self._fallback_response(
+            classification,
+            confidence,
+        )
 
     def _fallback_response(
         self,
         classification,
-        confidence_percentage,
+        confidence,
     ):
+        if confidence is not None:
+            confidence_text = f"{confidence * 100:.2f}%"
+        else:
+            confidence_text = "unknown confidence"
+
         if classification == "spam":
             return (
-                f"This message was classified as spam with "
-                f"{confidence_percentage:.2f}% confidence. "
-                f"I'd recommend being cautious with links, "
-                f"requests for money, or personal information."
+                f"This was classified as spam with "
+                f"{confidence_text}. Be cautious about replying, "
+                f"clicking links or sharing personal information."
             )
 
         return (
-            f"This message was classified as legitimate with "
-            f"{confidence_percentage:.2f}% confidence. "
-            f"It does not appear to match the spam patterns "
-            f"learned by the classifier."
+            f"This was classified as ham with "
+            f"{confidence_text}. It appears legitimate based on "
+            f"the model, although no automated classifier can "
+            f"guarantee that a message is safe."
         )
