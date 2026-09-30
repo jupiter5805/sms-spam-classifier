@@ -197,3 +197,52 @@ MODEL_PATH=models/trained_model.pkl python simple_interface.py
 ```
 
 The classifier uses the complete saved scikit-learn pipeline, meaning the same TF-IDF transformation used during training is automatically applied to new SMS messages.
+
+## Natural Language Chatbot
+
+The project includes a natural language chatbot interface combining the trained SMS spam classifier with a pre-trained language model.
+
+The chatbot uses `TinyLlama/TinyLlama-1.1B-Chat-v1.0` through Hugging Face Transformers.
+
+The application follows an Extract → Classify → Respond architecture:
+
+```text
+Natural language input
+        ↓
+TinyLlama
+Extract relevant SMS text
+        ↓
+TF-IDF + Logistic Regression
+Classify HAM or SPAM
+        ↓
+TinyLlama
+Generate conversational explanation
+```
+
+This architecture prevents conversational text surrounding an SMS from being passed directly to a classifier that was trained specifically on SMS messages.
+
+The same TinyLlama model instance is reused for extraction and response generation to avoid loading multiple copies of the language model into memory.
+
+Run the chatbot with:
+
+```bash
+python chatbot_interface.py
+```
+
+Example interaction:
+
+```text
+You: My friend received this message: "Congratulations! You won a free cash prize." Is it safe?
+
+Extracted SMS: Congratulations! You won a free cash prize.
+Classification: SPAM
+Confidence: 98.41%
+
+Assistant: This message was classified as spam. Be cautious about replying, clicking links, or providing personal information.
+```
+
+The chatbot accepts free-form natural language, extracts the relevant SMS content, passes it through the trained machine learning classifier, and uses the classification result to generate a conversational response.
+
+Type `exit` or `quit` to close the chatbot.
+
+The trained classifier location can still be configured using the `MODEL_PATH` environment variable.
