@@ -1,0 +1,11 @@
+Suspicious SMS messages often contain links designed to imitate legitimate websites.
+
+Delivery scams may claim that a parcel could not be delivered, that an address must be updated, or that a small redelivery fee must be paid.
+
+A recipient should avoid opening an unexpected link simply because the message appears urgent.
+
+The displayed text of a message does not guarantee that the sender is genuine. Sender names and phone numbers can sometimes be spoofed.
+
+If a message claims to come from a delivery company, bank, retailer, or other organisation, the safest approach is to open the organisation's official application or manually visit its official website rather than following the link in the SMS.
+
+A legitimate-looking message can still be fraudulent, so classification by an automated model should be treated as guidance rather than a guarantee of safety.

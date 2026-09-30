@@ -1,0 +1,11 @@
+Phishing messages try to trick people into revealing sensitive information such as passwords, bank details, card details, security codes, or personal information.
+
+SMS phishing is often called smishing. Attackers may pretend to be a bank, delivery company, government organisation, mobile provider, retailer, or other trusted organisation.
+
+Messages asking for banking information, passwords, PIN numbers, card details, or one-time security codes should be treated with caution.
+
+Legitimate organisations generally do not ask customers to send passwords, PINs, or full banking credentials through an SMS message.
+
+A message that creates urgency and immediately asks for sensitive information may be attempting to pressure the recipient into acting without thinking.
+
+People should avoid replying with financial or security information. If a message claims to come from an organisation, contact that organisation using its official website, app, phone number, or another trusted channel rather than using contact information supplied in the suspicious message.

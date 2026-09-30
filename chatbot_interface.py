@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from language_model import STYLE_PROMPTS, TinyLlamaAssistant
+from rag_store import RAGStore
 from sms_classifier import SMSClassifier
 
 
@@ -16,6 +17,10 @@ DEFAULT_MODEL_PATH = (
 
 LOG_DIR = BASE_DIR / "logs"
 HISTORY_PATH = LOG_DIR / "chat_history.log"
+
+DEFAULT_KNOWLEDGE_PATH = (
+    BASE_DIR / "knowledge"
+)
 
 
 def configure_history_logger():
@@ -53,7 +58,11 @@ def load_inputs_from_file(file_path):
         )
 
     if path.suffix.lower() == ".txt":
-        with open(path, "r", encoding="utf-8") as file:
+        with open(
+            path,
+            "r",
+            encoding="utf-8",
+        ) as file:
             messages = [
                 line.strip()
                 for line in file
@@ -94,9 +103,9 @@ def load_inputs_from_file(file_path):
                 "text",
             ]:
                 if candidate in available_columns:
-                    message_column = available_columns[
-                        candidate
-                    ]
+                    message_column = (
+                        available_columns[candidate]
+                    )
                     break
 
             if message_column is None:
@@ -133,42 +142,68 @@ def process_message(
     language_model,
     style,
     history_logger,
+    rag_store=None,
 ):
-    extracted_sms = language_model.extract_sms(
-        user_input
+    extracted_sms = (
+        language_model.extract_sms(
+            user_input
+        )
     )
 
-    result = classifier.classify_with_confidence(
-        extracted_sms
+    result = (
+        classifier.classify_with_confidence(
+            extracted_sms
+        )
     )
 
-    response = language_model.generate_response(
-        original_input=user_input,
-        extracted_sms=extracted_sms,
-        classification=result["label"],
-        confidence=result["confidence"],
-        style=style,
+    retrieved_context = []
+
+    if rag_store is not None:
+        retrieved_context = (
+            rag_store.retrieve(
+                user_input,
+                top_k=3,
+            )
+        )
+
+    response = (
+        language_model.generate_response(
+            original_input=user_input,
+            extracted_sms=extracted_sms,
+            classification=result["label"],
+            confidence=result["confidence"],
+            style=style,
+            retrieved_context=retrieved_context,
+        )
     )
 
     confidence = result["confidence"]
 
     if confidence is not None:
-        confidence_percentage = confidence * 100
         confidence_text = (
-            f"{confidence_percentage:.2f}%"
+            f"{confidence * 100:.2f}%"
         )
     else:
         confidence_text = "Not available"
 
+    sources = [
+        item["source"]
+        for item in retrieved_context
+    ]
+
     history_logger.info(
         "INPUT=%r | EXTRACTED=%r | "
-        "CLASSIFICATION=%s | CONFIDENCE=%s | "
-        "STYLE=%s | RESPONSE=%r",
+        "CLASSIFICATION=%s | "
+        "CONFIDENCE=%s | "
+        "STYLE=%s | "
+        "RAG_SOURCES=%r | "
+        "RESPONSE=%r",
         user_input,
         extracted_sms,
         result["label"],
         confidence_text,
         style,
+        sources,
         response,
     )
 
@@ -177,12 +212,14 @@ def process_message(
         "extracted_sms": extracted_sms,
         "classification": result["label"],
         "confidence": confidence,
+        "retrieved_context": retrieved_context,
         "response": response,
     }
 
 
 def display_result(result):
     print()
+
     print(
         f"Extracted SMS: "
         f"{result['extracted_sms']}"
@@ -199,8 +236,24 @@ def display_result(result):
             f"{result['confidence'] * 100:.2f}%"
         )
 
+    if result["retrieved_context"]:
+        print()
+        print("Retrieved knowledge:")
+
+        for index, item in enumerate(
+            result["retrieved_context"],
+            start=1,
+        ):
+            print(
+                f"{index}. "
+                f"{item['source']} "
+                f"(similarity "
+                f"{item['score']:.3f})"
+            )
+
     print(
-        f"\nAssistant: {result['response']}"
+        f"\nAssistant: "
+        f"{result['response']}"
     )
 
 
@@ -210,6 +263,7 @@ def run_file_mode(
     language_model,
     style,
     history_logger,
+    rag_store,
 ):
     messages = load_inputs_from_file(
         file_path
@@ -237,6 +291,7 @@ def run_file_mode(
                 language_model,
                 style,
                 history_logger,
+                rag_store,
             )
 
             display_result(result)
@@ -258,6 +313,7 @@ def run_interactive_mode(
     language_model,
     style,
     history_logger,
+    rag_store,
 ):
     print()
     print("SMS Spam Assistant")
@@ -311,6 +367,7 @@ def run_interactive_mode(
                 language_model,
                 style,
                 history_logger,
+                rag_store,
             )
 
             display_result(result)
@@ -351,6 +408,18 @@ def parse_arguments():
         help="Assistant response style",
     )
 
+    parser.add_argument(
+        "--knowledge",
+        default=str(
+            DEFAULT_KNOWLEDGE_PATH
+        ),
+        help=(
+            "A .txt file or folder "
+            "of .txt files used as "
+            "the RAG knowledge base"
+        ),
+    )
+
     return parser.parse_args()
 
 
@@ -379,6 +448,14 @@ def main():
             TinyLlamaAssistant()
         )
 
+        print(
+            "Building RAG knowledge store..."
+        )
+
+        rag_store = RAGStore(
+            args.knowledge
+        )
+
     except Exception as error:
         history_logger.exception(
             "Application startup failed."
@@ -398,6 +475,7 @@ def main():
                 language_model,
                 args.style,
                 history_logger,
+                rag_store,
             )
 
         except (
@@ -416,6 +494,7 @@ def main():
         language_model,
         args.style,
         history_logger,
+        rag_store,
     )
 
 

@@ -48,7 +48,9 @@ class TinyLlamaAssistant:
         self.model.to(self.device)
         self.model.eval()
 
-        logger.info("Language model loaded successfully.")
+        logger.info(
+            "Language model loaded successfully."
+        )
 
     def _get_device(self):
         if torch.backends.mps.is_available():
@@ -95,9 +97,13 @@ class TinyLlamaAssistant:
                 **generation_options,
             )
 
-        prompt_length = inputs["input_ids"].shape[-1]
+        prompt_length = (
+            inputs["input_ids"].shape[-1]
+        )
 
-        generated_tokens = outputs[0][prompt_length:]
+        generated_tokens = (
+            outputs[0][prompt_length:]
+        )
 
         response = self.tokenizer.decode(
             generated_tokens,
@@ -130,14 +136,25 @@ class TinyLlamaAssistant:
             do_sample=False,
         )
 
-        extracted = extracted.strip().strip('"').strip("'")
+        extracted = (
+            extracted
+            .strip()
+            .strip('"')
+            .strip("'")
+        )
 
         if not extracted:
             logger.warning(
-                "Empty extraction returned. Using original input."
+                "Empty extraction returned. "
+                "Using original input."
             )
 
             return user_input.strip()
+
+        logger.info(
+            "Extracted SMS: %s",
+            extracted,
+        )
 
         return extracted
 
@@ -148,6 +165,7 @@ class TinyLlamaAssistant:
         classification,
         confidence,
         style="friendly",
+        retrieved_context=None,
     ):
         style_instruction = STYLE_PROMPTS.get(
             style,
@@ -155,9 +173,32 @@ class TinyLlamaAssistant:
         )
 
         if confidence is not None:
-            confidence_text = f"{confidence * 100:.2f}%"
+            confidence_text = (
+                f"{confidence * 100:.2f}%"
+            )
         else:
-            confidence_text = "not available"
+            confidence_text = (
+                "not available"
+            )
+
+        if retrieved_context:
+            context_sections = []
+
+            for item in retrieved_context:
+                context_sections.append(
+                    f"Source: {item['source']}\n"
+                    f"Information: {item['text']}"
+                )
+
+            context_text = "\n\n".join(
+                context_sections
+            )
+
+        else:
+            context_text = (
+                "No additional knowledge "
+                "was retrieved."
+            )
 
         messages = [
             {
@@ -165,30 +206,41 @@ class TinyLlamaAssistant:
                 "content": (
                     "You are an SMS spam detection assistant. "
                     "A machine learning classifier has already analysed "
-                    "the SMS. Treat its result as authoritative. "
+                    "the SMS. Treat its classification as authoritative. "
                     "Do not invent or change the confidence score. "
-                    "Mention the classifier result and confidence naturally. "
-                    "If the result is spam, advise caution with links, "
-                    "payments and personal information. If the result is "
-                    "ham, say it appears legitimate but do not guarantee "
-                    "that it is safe. "
+                    "Use the retrieved knowledge when it is relevant to "
+                    "explain why the message may be suspicious or "
+                    "legitimate. Do not claim that the retrieved "
+                    "information proves the classification. "
+                    "If the result is spam, provide practical safety "
+                    "advice. If the result is ham, say that it appears "
+                    "legitimate based on the classifier but do not give "
+                    "an absolute safety guarantee. "
                     f"{style_instruction}"
                 ),
             },
             {
                 "role": "user",
                 "content": (
-                    f"Original request: {original_input}\n"
-                    f"Extracted SMS: {extracted_sms}\n"
-                    f"Classification: {classification}\n"
-                    f"Confidence: {confidence_text}"
+                    f"Original user input:\n"
+                    f"{original_input}\n\n"
+                    f"Extracted SMS:\n"
+                    f"{extracted_sms}\n\n"
+                    f"Classifier result:\n"
+                    f"{classification}\n\n"
+                    f"Classifier confidence:\n"
+                    f"{confidence_text}\n\n"
+                    f"Retrieved knowledge:\n"
+                    f"{context_text}\n\n"
+                    f"Respond to the user using the classification "
+                    f"and relevant retrieved knowledge."
                 ),
             },
         ]
 
         response = self._generate(
             messages,
-            max_new_tokens=120,
+            max_new_tokens=160,
             do_sample=True,
             temperature=0.7,
         )
@@ -207,9 +259,13 @@ class TinyLlamaAssistant:
         confidence,
     ):
         if confidence is not None:
-            confidence_text = f"{confidence * 100:.2f}%"
+            confidence_text = (
+                f"{confidence * 100:.2f}%"
+            )
         else:
-            confidence_text = "unknown confidence"
+            confidence_text = (
+                "unknown confidence"
+            )
 
         if classification == "spam":
             return (
